@@ -1,11 +1,15 @@
 # Token Radar
 
+[![make.fun](https://make.fun/badge/token-radar-01.svg)](https://make.fun/bounty/token-radar-01)
+[![rank](https://make.fun/badge/token-radar-01/Artemis-boy/token-launch-radar/rank.svg)](https://make.fun/bounty/token-radar-01)
+[![reward](https://make.fun/badge/token-radar-01/Artemis-boy/token-launch-radar/reward.svg)](https://make.fun/bounty/token-radar-01)
+
 A token launch radar: it reads a sealed snapshot of the protocol universe
 (DefiLlama, 2026-11-14), finds the protocols that record no token yet, ranks
 them by what a launch would be worth, and hands in a web dashboard with the
 board, a detail view for every protocol, and the steps to farm it.
 
-Built for the make.fun bounty **"Build the best token launch radar"**
+Built for the make.fun bounty [**"Build the best token launch radar"**](https://make.fun/bounty/token-radar-01)
 (`token-radar-01`). The winning dashboard is featured on make.fun's site.
 
 ## The model (radar-2)
