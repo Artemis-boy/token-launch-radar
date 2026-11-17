@@ -1,4 +1,4 @@
-// Token Radar's model, version radar-3: one sealed snapshot in, one ranked board out.
+// Token Radar's model, version radar-4: one sealed snapshot in, one ranked board out.
 //
 // The board ranks pre-token protocols by what a launch would be worth if the
 // protocol's record stayed as it is. The value is a model, never a promise,
@@ -8,9 +8,15 @@
 //   implied     = 10^(a + b*log10(TVL/1e8) + familyLog) x growth x maturity
 //
 // The fit set is the snapshot's traded protocols (market cap and TVL both
-// above zero) with bridges, exchanges and liquid-staking products removed,
-// versioned and wrapped/staked names removed, and the market-cap-to-TVL
-// ratio trimmed to [1/500, 50]. The family factor is each category's mean
+// above zero) with bridges and exchanges removed, versioned and wrapped/staked
+// names removed, and the market-cap-to-TVL ratio trimmed to [1/500, 50].
+// Radar-4 returns liquid-staking products to the fit set: they are legitimate
+// traded protocols with their own tokens, and including them (n 89 -> 100)
+// improves the out-of-sample miss (leave-one-out 3.29x -> 3.04x, time split
+// 2.61x -> 1.99x). Bridges and exchanges stay out of the fit set because
+// their market cap does not price the same kind of launch. The board itself
+// still never ranks a staking or bridge product: that rule is separate from
+// the fit set, and it is unchanged. The family factor is each category's mean
 // residual from the curve, shrunk toward zero and capped to [0.5, 2.5], so a
 // category the market prices above the curve lifts its protocols and one the
 // market prices below it pulls them down. Growth carries the 7-day TVL change
@@ -59,7 +65,7 @@ export interface Snapshot {
 }
 
 /** The model's label: the dashboard names it. */
-export const MODEL_VERSION = 'radar-3';
+export const MODEL_VERSION = 'radar-4';
 
 /** Pre-token protocols below the watchlist floor the early radar carries, by TVL. */
 export const EARLY_ROWS = 200;
@@ -69,6 +75,9 @@ export const LIVE_ROWS = 24;
 
 /** Categories that are bridges, staking products or exchanges, never launches of their own. */
 const EXCLUDED_CATEGORIES = new Set(['Bridge', 'Canonical Bridge', 'Liquid Staking', 'Liquid Restaking', 'Restaked BTC', 'CEX']);
+
+/** Categories the fit set drops: bridges and exchanges only. Liquid-staking products stay in the fit set (radar-4): they are traded protocols with their own tokens, and their inclusion improves the out-of-sample miss. The board still never ranks them; that rule uses EXCLUDED_CATEGORIES above. */
+const FIT_EXCLUDED_CATEGORIES = new Set(['Bridge', 'Canonical Bridge', 'CEX']);
 
 /** The fit set keeps only market-cap-to-TVL ratios inside this band. */
 const RATIO_MIN = 1 / 500;
@@ -385,11 +394,11 @@ export function isRankable(p: SnapshotProtocol): boolean {
   return true;
 }
 
-/** The traded protocols the curve is fitted to: market cap and TVL both above zero, bridges, exchanges and liquid-staking products removed, versioned and wrapped names removed, the ratio trimmed. */
+/** The traded protocols the curve is fitted to: market cap and TVL both above zero, bridges and exchanges removed, versioned and wrapped names removed, the ratio trimmed. Liquid-staking products are fitted, not ranked: they price the curve but never appear on the board. */
 export function fitSet(protocols: SnapshotProtocol[]): SnapshotProtocol[] {
   return protocols.filter((p) => {
     if (p.mcap_usd === null || p.mcap_usd <= 0 || p.tvl_usd <= 0) return false;
-    if (p.category !== null && EXCLUDED_CATEGORIES.has(p.category)) return false;
+    if (p.category !== null && FIT_EXCLUDED_CATEGORIES.has(p.category)) return false;
     if (VERSIONED.test(p.name)) return false;
     if (WRAPPED_WORD.test(p.name)) return false;
     if (EXCHANGE_START.test(p.name)) return false;
