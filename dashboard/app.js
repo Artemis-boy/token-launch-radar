@@ -403,6 +403,60 @@
   var dialog = el('dialog', { class: 'detail', id: 'detail', 'aria-labelledby': 'detail-title' });
   dialog.addEventListener('close', function () { state.selected = null; writeHash(); });
 
+  /* -- Spotlight: the five strongest implied values ----------------------- */
+
+  function spotlight() {
+    var top = DATA.rows.slice(0, 5);
+    var cards = top.map(function (r) {
+      var growth = r.change_7d === null ? 'n/a' : fmtPct(r.change_7d);
+      var growthClass = r.change_7d === null ? '' : r.change_7d >= 0 ? 'pos' : 'neg';
+      return el('button', { type: 'button', class: 'spot-card', onclick: function () { openDetail(r.slug); } },
+        el('span', { class: 'spot-rank', text: '#' + r.rank }),
+        el('b', { class: 'spot-name', text: r.name }),
+        el('span', { class: 'sub', text: (r.category || 'Other') + ' on ' + (r.chains && r.chains.length ? r.chains[0] : 'an unnamed chain') }),
+        el('span', { class: 'spot-value', text: fmtUsd(r.implied_value_usd) }),
+        el('span', { class: 'sub' }, 'TVL ', fmtUsd(r.tvl_usd), '  ·  7d ', el('span', { class: growthClass, text: growth }))
+      );
+    });
+    return el('section', { class: 'spot', 'aria-label': 'Top five protocols by implied value' },
+      el('div', { class: 'spot-head' },
+        el('h2', { text: 'Top picks' }),
+        el('p', { text: 'The five strongest implied values on the board. Select one for its model and farm plan.' })
+      ),
+      el('div', { class: 'spot-grid' }, cards)
+    );
+  }
+
+  /* -- Where the value sits, by category ---------------------------------- */
+
+  function categorySummary() {
+    var totals = {};
+    DATA.rows.forEach(function (r) {
+      var c = r.category || 'Other';
+      totals[c] = (totals[c] || 0) + r.implied_value_usd;
+    });
+    var list = Object.keys(totals).map(function (c) { return { category: c, total: totals[c] }; });
+    list.sort(function (a, b) { return b.total - a.total; });
+    var top = list.slice(0, 6);
+    var max = top.length ? top[0].total : 1;
+    var grand = 0;
+    list.forEach(function (c) { grand += c.total; });
+    var rows = top.map(function (c) {
+      return el('div', { class: 'cat-row' },
+        el('span', { class: 'cat-name', text: c.category }),
+        el('span', { class: 'cat-bar', 'aria-hidden': 'true' }, el('i', { style: 'width:' + Math.max(2, Math.round((c.total / max) * 100)) + '%' })),
+        el('span', { class: 'num cat-value', text: fmtUsd(c.total) })
+      );
+    });
+    return el('section', { class: 'panel cats' },
+      el('div', { class: 'panel-head' },
+        el('h2', { text: 'Where the value sits' }),
+        el('p', { text: 'Total implied value by category across all ' + DATA.board_size + ' pre-token rows (' + fmtUsd(grand) + ' in all). The strongest categories are the ones where a launch would be worth the most.' })
+      ),
+      el('div', { class: 'cat-list' }, rows)
+    );
+  }
+
   function openDetail(slug) {
     var row = null;
     for (var i = 0; i < DATA.rows.length; i++) if (DATA.rows[i].slug === slug) { row = DATA.rows[i]; break; }
@@ -472,8 +526,10 @@
     var shell = el('div', { class: 'shell' });
     shell.appendChild(header());
     shell.appendChild(lede());
+    if (state.tab === 'pre-token') shell.appendChild(spotlight());
     shell.appendChild(controls());
     shell.appendChild(state.tab === 'pre-token' ? boardTable() : liveTable());
+    if (state.tab === 'pre-token') shell.appendChild(categorySummary());
     if (state.tab === 'pre-token') shell.appendChild(modelPanel());
     shell.appendChild(footer());
     app.appendChild(shell);
